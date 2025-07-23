@@ -1,3 +1,5 @@
+#import database connection
+import mysql.connector
 import datetime
 
 class TutoringSystem:
