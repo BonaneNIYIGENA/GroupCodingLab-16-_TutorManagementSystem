@@ -222,6 +222,7 @@ class TutoringSystem:
                     (user_id, name, email)
                 )
 
+            self.connection.commit()
             print(f"\nRegistration successful! Your {role} ID is: {user_id}")
             return user_id
 
