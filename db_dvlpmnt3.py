@@ -17,8 +17,20 @@ class TutoringSystem:
         self.init_db()
 
     def connect_to_database(self) -> None:
-        """Establish connection to the MySQL database"""
+        """Establish connection and create database if it doesn't exist."""
         try:
+            # Connect without database
+            temp_conn = mysql.connector.connect(
+                host='mysql-1579901e-alustudent-6e44.f.aivencloud.com',
+                port=25379,
+                user='avnadmin',
+                password='AVNS_jqnnOJisae0B9tdYVj3'
+            )
+            cursor = temp_conn.cursor()
+            cursor.execute("CREATE DATABASE IF NOT EXISTS tutor_management_system")
+            temp_conn.close()
+
+            # Now connect to the database
             self.connection = mysql.connector.connect(
                 host='mysql-1579901e-alustudent-6e44.f.aivencloud.com',
                 port=25379,
@@ -30,9 +42,11 @@ class TutoringSystem:
 
             if self.connection.is_connected():
                 print("\nConnection to the database was successful.")
+
         except Error as e:
             print(f"\nError connecting to MySQL database: {e}")
             raise
+
 
     def init_db(self) -> None:
         """Initialize database tables if they don't exist"""
@@ -306,7 +320,7 @@ class TutoringSystem:
 
         try:
             cursor = self.connection.cursor()
-            session_id = self.generate_id('sess', 'sessions')
+            session_id = self.generate_id('session')
 
             (cursor.execute('''
                 INSERT INTO sessions (session_id, tutor_id, subject, topic, level, details, date, time, mode, status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)''', (
@@ -389,7 +403,7 @@ class TutoringSystem:
                         cursor.execute("START TRANSACTION")
 
                         # Create the session
-                        session_id = self.generate_id('sess', 'sessions')
+                        session_id = self.generate_id('session')
                         cursor.execute('''
                             INSERT INTO sessions (
                                 session_id, tutor_id, subject, topic, level, details,
