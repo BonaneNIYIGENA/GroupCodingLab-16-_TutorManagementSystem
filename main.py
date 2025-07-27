@@ -444,4 +444,14 @@ class TutoringSystem:
                 break
             else:
                 print("Invalid choice. Please try again.")
-                
+
+
+if __name__ == "__main__":
+ try:
+        system = TutoringSystem()
+        system.run()
+ except Error as e:
+        print(f"\nA critical error occurred: {e}")
+        print("The system will now exit.")
+ except KeyboardInterrupt:
+        print("\n\nProgram interrupted by user. Exiting...")            
