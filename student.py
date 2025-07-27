@@ -99,7 +99,7 @@ def register_for_session(system, session):
     finally:
         cursor.close()
 
-""" Displays all active upcoming sessions to the student,"""
+""" Displays all active upcoming sessions to the student"""
 def student_view_and_register_sessions(system):
     """Show all available sessions with registration option"""
     try:
@@ -172,3 +172,24 @@ def student_view_and_register_sessions(system):
         input("\nPress Enter to continue...")
     finally:
         cursor.close()
+
+"""Displays a menu for students to manage their session requests."""
+def student_requests_menu(system):
+    """Menu for managing session requests"""
+    while True:
+        print("\n📝 Session Requests Menu")
+        print("1. View pending requests and confirm interest")
+        print("2. Create new request")
+        print("3. Back to Dashboard")
+
+        choice = input("Enter your choice (1-3): ").strip()
+
+        if choice == '1':
+            student_view_and_confirm_requests(system)
+        elif choice == '2':
+            _create_new_request(system)
+        elif choice == '3':
+            break
+        else:
+            print("Invalid choice. Please enter 1-3.")
+
