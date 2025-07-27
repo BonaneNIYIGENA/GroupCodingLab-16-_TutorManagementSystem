@@ -213,3 +213,35 @@ class TutoringSystem:
             if validation_func(user_input):
                 return user_input
             print(error_msg)
+
+    def generate_id(self, entity_type):
+        """Generates consistent IDs for entities"""
+        prefix_map = {
+            'student': ('st_', 'students', 'student_id'),
+            'tutor': ('ttr_', 'tutors', 'tutor_id'),
+            'session': ('sess_', 'sessions', 'session_id'),
+            'request': ('req_', 'session_requests', 'request_id')
+        }
+
+        try:
+            prefix, table, column = prefix_map[entity_type]
+            cursor = self.connection.cursor()
+
+            query = f"SELECT MAX(CAST(SUBSTRING({column}, {len(prefix) + 1}) AS UNSIGNED)) FROM {table}"
+            cursor.execute(query)
+            max_id = cursor.fetchone()[0]
+            new_id_num = (max_id or 0) + 1
+            new_id = f"{prefix}{new_id_num:03d}"
+
+            max_length = {'st_': 6, 'ttr_': 7, 'sess_': 8, 'req_': 7}[prefix]
+            if len(new_id) > max_length:
+                raise ValueError(f"Generated ID exceeds maximum length")
+
+            return new_id
+
+        except Error as e:
+            print(f"Error generating ID: {e}")
+            raise
+        finally:
+            if cursor:
+                cursor.close()
