@@ -317,4 +317,43 @@ def _update_session_with_id(system, session_id):
             cursor.close()
     else:
         print("\nNo changes made.")
-        
+
+def tutor_update_session(system):
+    """Improved session updating with session selection"""
+    try:
+        # First show scheduled sessions
+        cursor = system.connection.cursor(dictionary=True)
+        cursor.execute('''
+            SELECT s.*, COUNT(r.student_id) AS registration_count FROM sessions s LEFT JOIN registrations r ON s.session_id = r.session_id AND r.status = 'registered' WHERE s.tutor_id = %s AND s.status = 'active' AND s.date >= CURDATE() GROUP BY s.session_id ORDER BY s.date, s.start_time
+        ''', (system.current_user_id,))
+
+        sessions = cursor.fetchall()
+
+        if not sessions:
+            print("\nYou have no sessions to update.")
+            return
+
+        print("\nYour Scheduled Sessions:")
+        for session in sessions:
+            print(f"\nSession ID: {session['session_id']}")
+            print(f"Subject: {session['subject']} - {session['topic']}")
+            print(f"Date: {session['date']} | Time: {session['start_time']}-{session['end_time']}")
+            print(f"Mode: {session['mode']}")
+            if session['mode'] == 'In-person':
+                print(f"Location: {session['location']}")
+            else:
+                print(f"Online Link: {session['online_link']}")
+            print(f"Students registered: {session['registration_count']}")
+            print(f"Details: {session['details']}")
+
+        # Get session ID to update
+        session_id = input("\nEnter Session ID to update (or 'cancel'): ")
+        if session_id.lower() == 'cancel':
+            return
+
+        _update_session_with_id(system, session_id)
+
+    except Error as e:
+        print(f"\nError retrieving session: {e}")
+    finally:
+        cursor.close()
