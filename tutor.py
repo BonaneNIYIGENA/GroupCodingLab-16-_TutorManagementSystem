@@ -357,3 +357,25 @@ def tutor_update_session(system):
         print(f"\nError retrieving session: {e}")
     finally:
         cursor.close()
+
+def tutor_manage_sessions(system):
+    """Nested session management menu"""
+    while True:
+        print("\nManage Sessions")
+        print("1. Post New Session")
+        print("2. View/Respond to Student Requests")
+        print("3. Update Scheduled Sessions")
+        print("4. Back to Main Menu")
+
+        choice = input("Enter your choice (1-4): ")
+
+        if choice == '1':
+            tutor_post_session(system)
+        elif choice == '2':
+            tutor_view_requests(system)
+        elif choice == '3':
+            tutor_update_session(system)
+        elif choice == '4':
+            break
+        else:
+            print("Invalid choice. Please try again.")
