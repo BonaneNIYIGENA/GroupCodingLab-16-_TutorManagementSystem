@@ -390,4 +390,58 @@ class TutoringSystem:
 
         end_dt = start_dt + datetime.timedelta(minutes=duration_minutes)
         return end_dt.time().strftime("%H:%M")
-                    
+
+    def run(self):
+        """Main system loop"""
+        print("\nWelcome to Tutoring Management System!")
+
+        while True:
+            print("\nMain Menu")
+            print("1. Login")
+            print("2. Create new account")
+            print("3. Exit System")
+
+            choice = input("Enter your choice (1-3): ")
+
+            if choice == '1':
+                if self.login_user():
+                    if self.current_user_role == 'student':
+                        from student import student_flow
+                        student_flow(self)
+                    else:
+                        from tutor import tutor_flow
+                        tutor_flow(self)
+            elif choice == '2':
+                print("\nCreate New Account")
+                print("1. Register as Student")
+                print("2. Register as Tutor")
+                print("3. Back to main menu")
+
+                reg_choice = input("Enter your choice (1-3): ")
+
+                if reg_choice == '1':
+                    user_id = self.register_user('student')
+                    if user_id:
+                        self.current_user_id = user_id
+                        self.current_user_role = 'student'
+                        from student import student_flow
+                        student_flow(self)
+                elif reg_choice == '2':
+                    user_id = self.register_user('tutor')
+                    if user_id:
+                        self.current_user_id = user_id
+                        self.current_user_role = 'tutor'
+                        from tutor import tutor_flow
+                        tutor_flow(self)
+                elif reg_choice == '3':
+                    continue
+                else:
+                    print("Invalid choice. Please try again.")
+            elif choice == '3':
+                print("\nThank you for using the Tutoring Management System. Goodbye!")
+                if self.connection and self.connection.is_connected():
+                    self.connection.close()
+                break
+            else:
+                print("Invalid choice. Please try again.")
+                
