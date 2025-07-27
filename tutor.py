@@ -225,3 +225,96 @@ def tutor_view_requests(system):
         print(f"\nError viewing requests: {e}")
     finally:
         cursor.close()
+
+def _update_session_with_id(system, session_id):
+    """Helper method to update a specific session"""
+    session = system.get_session_details(session_id)
+    if not session or session['tutor_id'] != system.current_user_id:
+        print("Invalid Session ID or not your session")
+        return
+
+    updates = {}
+    print("\nUpdate Session (leave blank to keep current value)")
+
+    # Convert time objects to strings for display
+    current_start_time = session['start_time'].strftime("%H:%M") if isinstance(session['start_time'],
+                                                                               datetime.time) else session['start_time']
+    current_end_time = session['end_time'].strftime("%H:%M") if isinstance(session['end_time'], datetime.time) else \
+    session['end_time']
+
+    fields = [
+        ('subject', 'Subject', lambda x: len(x) > 0),
+        ('topic', 'Topic', lambda x: len(x) > 0),
+        ('level', 'Level (Beginner/Intermediate/Advanced)', lambda x: x.lower() in ['beginner', 'intermediate', 'advanced']),
+        ('details', 'Details', None),
+        ('date', 'Date (YYYY-MM-DD)', lambda x: len(x) == 10 and x[4] == '-' and x[7] == '-' and datetime.datetime.strptime(x, "%Y-%m-%d") >= datetime.datetime.now()),
+        ('start_time', 'Start Time (HH:MM)', lambda x: len(x) == 5 and x[2] == ':'),
+        ('duration', 'Duration (minutes)', lambda x: x.isdigit() and int(x) > 0),
+        ('mode', 'Mode (Online/In-person)', lambda x: x.lower() in ['online', 'in-person'])
+    ]
+
+    for field, prompt, validation in fields:
+        current = session[field]
+        # Handle special cases for time display
+        if field == 'start_time':
+            current = current_start_time
+        elif field == 'end_time':
+            current = current_end_time
+
+        new_val = input(f"{prompt} [{current}]: ").strip()
+        if new_val:
+            if validation and not validation(new_val):
+                print(f"Invalid {field}, keeping current value")
+                continue
+            updates[field] = new_val.capitalize() if field == 'mode' or field == 'level' else new_val
+
+    # If time or duration changed, recalculate end time
+    if 'start_time' in updates or 'duration' in updates:
+        start_time = updates.get('start_time', current_start_time)
+        # Ensure we have the correct start_time format
+        if isinstance(start_time, datetime.time):
+            start_time = start_time.strftime("%H:%M")
+        duration = int(updates.get('duration', session['duration']))
+        updates['end_time'] = system.calculate_end_time(start_time, duration)
+
+    # Handle location/link based on mode
+    if 'mode' in updates or 'location' in updates or 'online_link' in updates:
+        mode = updates.get('mode', session['mode'])
+        if mode == 'In-person':
+            updates['location'] = input(f"Location [{session.get('location', '')}]: ").strip() or session.get('location', '')
+            updates['online_link'] = None
+        else:
+            updates['online_link'] = input(f"Online link [{session.get('online_link', '')}]: ").strip() or session.get('online_link', '')
+            updates['location'] = None
+
+    if updates:
+        try:
+            cursor = system.connection.cursor()
+            cursor.execute("START TRANSACTION")
+
+            # Record changes
+            for field, new_value in updates.items():
+                cursor.execute('''
+                    INSERT INTO session_updates (session_id, field_name, old_value, new_value) VALUES (%s, %s, %s, %s)
+                ''', (session_id, field, session[field], new_value))
+
+            # Build update query
+            set_clause = ', '.join([f"{field}=%s" for field in updates])
+            query = f"UPDATE sessions SET {set_clause} WHERE session_id=%s"
+            params = list(updates.values()) + [session_id]
+
+            cursor.execute(query, params)
+            system.connection.commit()
+            print("\nSession updated successfully!")
+
+        except Error as e:
+            system.connection.rollback()
+            if "unique_session_time" in str(e):
+                print("\nA session already exists at this date and time. Update cancelled.")
+            else:
+                print(f"\nError updating session: {e}")
+        finally:
+            cursor.close()
+    else:
+        print("\nNo changes made.")
+        
