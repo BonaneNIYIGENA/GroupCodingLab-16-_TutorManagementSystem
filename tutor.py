@@ -379,3 +379,37 @@ def tutor_manage_sessions(system):
             break
         else:
             print("Invalid choice. Please try again.")
+
+def tutor_view_scheduled_simple(system):
+    """Simplified view of scheduled sessions (read-only)"""
+    try:
+        cursor = system.connection.cursor(dictionary=True)
+        cursor.execute('''
+            SELECT s.*, COUNT(r.student_id) AS registration_count FROM sessions s LEFT JOIN registrations r ON s.session_id = r.session_id AND r.status = 'registered' WHERE s.tutor_id = %s AND s.status = 'active' AND s.date >= CURDATE() GROUP BY s.session_id ORDER BY s.date, s.start_time
+        ''', (system.current_user_id,))
+
+        sessions = cursor.fetchall()
+
+        if not sessions:
+            print("\nYou have no scheduled sessions.")
+            return
+
+        print("\nYour Scheduled Sessions (Ordered by Date/Time):")
+        for session in sessions:
+            print(f"\nSession ID: {session['session_id']}")
+            print(
+                f"Date: {session['date']} | Time: {session['start_time']}-{session['end_time']} | Duration: {session['duration']} minutes")
+            print(f"Subject: {session['subject']} - {session['topic']}")
+
+            # Display mode with appropriate location/link
+            if session['mode'] == 'Online':
+                print(f"Mode: Online | Link: {session['online_link']}")
+            else:
+                print(f"Mode: In-person | Location: {session['location']}")
+
+            print(f"Students registered: {session['registration_count']}")
+
+    except Error as e:
+        print(f"\nError viewing sessions: {e}")
+    finally:
+        cursor.close()
