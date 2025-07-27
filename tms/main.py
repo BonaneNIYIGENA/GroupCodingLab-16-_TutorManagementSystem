@@ -3,6 +3,7 @@ import datetime
 import hashlib
 from mysql.connector import Error
 from datetime import timedelta
+import re
 
 
 class TutoringSystem:
@@ -177,11 +178,39 @@ class TutoringSystem:
         """Returns SHA-256 hash of the password"""
         return hashlib.sha256(password.encode()).hexdigest()
 
-    def get_valid_input(self, prompt, validation_func=None, error_msg="Invalid input! Please try again"):
-        """Gets validated user input"""
+    def get_valid_input(self):
+        """Prompt for a password with rule-specific feedback and return the hashed password."""
+        import re
+
+        def check_password_rules(password: str) -> list:
+            errors = []
+            if len(password) < 5:
+                errors.append("- Must be at least 5 characters")
+            if not re.search(r"[A-Z]", password):
+                errors.append("- Must include at least one uppercase letter")
+            if not re.search(r"[a-z]", password):
+                errors.append("- Must include at least one lowercase letter")
+            if not re.search(r"\d", password):
+                errors.append("- Must include at least one number")
+            return errors
+
+        print("\nPassword Requirements:\n- At least 5 characters\n- At least one uppercase letter\n- At least one lowercase letter\n- At least one number\n")
+
+        while True:
+            password = input("Enter your password: ").strip()
+            errors = check_password_rules(password)
+            if not errors:
+                return self.hash_password(password)
+
+            print("\n❌ Password does not meet the following criteria:")
+            for error in errors:
+                print(error)
+      
+    def get_valid_input_generic(self, prompt, validation_func, error_msg="Invalid input. Please try again."):
+        """Generic input validator for any prompt with validation"""
         while True:
             user_input = input(prompt).strip()
-            if not validation_func or validation_func(user_input):
+            if validation_func(user_input):
                 return user_input
             print(error_msg)
 
@@ -241,10 +270,13 @@ class TutoringSystem:
     def register_user(self, role):
         """Registers a new user"""
         print(f"\nRegister as a new {role}")
-        name = self.get_valid_input("Your Name: ", lambda x: len(x) > 0)
-        email = self.get_valid_input("Your Email: ", lambda x: '@' in x and '.' in x)
-        password = self.get_valid_input("Password: ", lambda x: len(x) >= 6)
-        password_hash = self.hash_password(password)
+        name = self.get_valid_input_generic("Your Name: ", lambda x: len(x) > 0, "Name cannot be empty.")
+        email = self.get_valid_input_generic(
+            "Your Email: ",
+            lambda x: '@' in x and '.' in x,
+            "Please enter a valid email address."
+        )
+        password_hash = self.get_valid_input()  # calls the password input + validation + hashing
 
         try:
             cursor = self.connection.cursor(dictionary=True)
