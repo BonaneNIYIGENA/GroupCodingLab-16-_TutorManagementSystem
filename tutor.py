@@ -23,3 +23,23 @@ def tutor_flow(system):
             break
         else:
             print("Invalid choice. Please try again.")
+
+def tutor_post_session(system):
+    """Post session with time conflict check"""
+    print("\nPost a New Tutoring Session")
+
+    session_data = {
+        "tutor_id": system.current_user_id,
+        "subject": system.get_valid_input("Subject: ", lambda x: len(x) > 0),
+        "topic": system.get_valid_input("Topic: ", lambda x: len(x) > 0),
+        "level": system.get_valid_input(
+            "Level (Beginner/Intermediate/Advanced): ",
+            lambda x: x.lower() in ['beginner', 'intermediate', 'advanced']
+        ).capitalize(),
+        "details": input("Details: "),
+        "date": system.get_valid_input(
+            "Date (YYYY-MM-DD): ",
+            lambda x: len(x) == 10 and x[4] == '-' and x[7] == '-' and
+                      datetime.datetime.strptime(x, "%Y-%m-%d") >= datetime.datetime.now()
+        )
+    }
