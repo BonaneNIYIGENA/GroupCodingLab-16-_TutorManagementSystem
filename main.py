@@ -245,3 +245,24 @@ class TutoringSystem:
         finally:
             if cursor:
                 cursor.close()
+
+    def get_session_details(self, session_id):
+        """Retrieves session details by ID"""
+        try:
+            cursor = self.connection.cursor(dictionary=True)
+            cursor.execute('''
+                SELECT s.*, t.name AS tutor_name, 
+                       COUNT(r.student_id) AS registration_count
+                FROM sessions s
+                JOIN tutors t ON s.tutor_id = t.tutor_id
+                LEFT JOIN registrations r ON s.session_id = r.session_id AND r.status = 'registered'
+                WHERE s.session_id = %s
+                GROUP BY s.session_id
+            ''', (session_id,))
+            return cursor.fetchone()
+        except Error as e:
+            print(f"Error retrieving session: {e}")
+            return None
+        finally:
+            if cursor:
+                cursor.close()
