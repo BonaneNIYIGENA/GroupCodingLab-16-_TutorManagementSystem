@@ -321,3 +321,51 @@ class TutoringSystem:
         finally:
             if cursor:
                 cursor.close()
+
+    def login_user(self):
+        """Authenticates a user"""
+        print("\nLogin to your account")
+        user_id = input("Enter your ID (st_XXX for student, ttr_XXX for tutor): ").strip()
+        password = input("Enter your password: ")
+
+        try:
+            cursor = self.connection.cursor(dictionary=True)
+
+            if user_id.startswith('st_'):
+                cursor.execute(
+                    "SELECT student_id, name, password_hash FROM students WHERE student_id = %s",
+                    (user_id,)
+                )
+                role = 'student'
+            elif user_id.startswith('ttr_'):
+                cursor.execute(
+                    "SELECT tutor_id, name, password_hash FROM tutors WHERE tutor_id = %s",
+                    (user_id,)
+                )
+                role = 'tutor'
+            else:
+                print("Invalid ID format")
+                return False
+
+            user = cursor.fetchone()
+            if user:
+                # Verify password
+                if user['password_hash'] == self.hash_password(password):
+                    self.current_user_id = user[f"{role}_id"]
+                    self.current_user_role = role
+                    self.current_user_name = user['name']
+                    print(f"\nWelcome back, {role} {user['name']}!")
+                    return True
+                else:
+                    print("Incorrect password")
+                    return False
+
+            print("ID not found. Please try again or register.")
+            return False
+
+        except Error as e:
+            print(f"Login error: {e}")
+            return False
+        finally:
+            if cursor:
+                cursor.close()            
