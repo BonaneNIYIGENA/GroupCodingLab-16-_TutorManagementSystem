@@ -98,3 +98,77 @@ def register_for_session(system, session):
         return False
     finally:
         cursor.close()
+
+""" Displays all active upcoming sessions to the student,"""
+def student_view_and_register_sessions(system):
+    """Show all available sessions with registration option"""
+    try:
+        cursor = system.connection.cursor(dictionary=True)
+        cursor.execute('''
+            SELECT s.session_id, s.subject, s.topic, s.date, 
+                   s.start_time, s.end_time, s.duration, s.mode,
+                   t.name AS tutor_name, t.email AS tutor_email,
+                   s.location, s.online_link, s.details
+            FROM sessions s
+            JOIN tutors t ON s.tutor_id = t.tutor_id
+            WHERE s.status = 'active' AND s.date >= CURDATE()
+            ORDER BY s.date, s.start_time
+        ''')
+
+        sessions = cursor.fetchall()
+
+        if not sessions:
+            print("\nNo available sessions at this time.")
+            input("\nPress Enter to return to dashboard...")
+            return
+
+        print("\n🔍 Available Sessions:")
+        for idx, session in enumerate(sessions, 1):
+            print(f"\n{idx}. Subject: {session['subject']} - {session['topic']}")
+            print(f"   Date: {session['date']} | Time: {session['start_time']}-{session['end_time']}")
+            print(f"   Duration: {session['duration']} min | Mode: {session['mode']}")
+            print(f"   Tutor: {session['tutor_name']} ({session['tutor_email']})")
+            if session['mode'] == 'Online':
+                print(f"   Link: {session['online_link']}")
+            else:
+                print(f"   Location: {session['location']}")
+            print(f"   Details: {session['details'] or 'No details available'}")
+
+        while True:
+            selection = input("\nEnter session numbers to register (comma separated, 0 to cancel): ").strip()
+            if selection == '0':
+                break
+
+            selected_indices = []
+            for s in selection.split(','):
+                s = s.strip()
+                if not s.isdigit():
+                    print(f"Invalid input '{s}'. Please enter numbers only.")
+                    continue
+                idx = int(s) - 1
+                if 0 <= idx < len(sessions):
+                    selected_indices.append(idx)
+                else:
+                    print(f"Invalid session number {s}. Please enter numbers between 1-{len(sessions)}")
+
+            if not selected_indices:
+                continue
+
+            registered_count = 0
+            for idx in selected_indices:
+                if register_for_session(system, sessions[idx]):
+                    registered_count += 1
+
+            if registered_count > 0:
+                print(f"\n✅ Successfully registered for {registered_count} session(s)")
+            else:
+                print("\nNo sessions were registered")
+
+            if input("\nRegister for more sessions? (y/n): ").lower() != 'y':
+                break
+
+    except Error as e:
+        print(f"\nError viewing sessions: {e}")
+        input("\nPress Enter to continue...")
+    finally:
+        cursor.close()
