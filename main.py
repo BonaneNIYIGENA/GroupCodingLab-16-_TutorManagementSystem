@@ -368,4 +368,26 @@ class TutoringSystem:
             return False
         finally:
             if cursor:
-                cursor.close()            
+                cursor.close()    
+
+    def calculate_end_time(self, start_time, duration_minutes):
+        """Calculates end time based on start time and duration Handle all possible input types"""
+        if isinstance(start_time, str):
+            # Handle string input (HH:MM)
+            try:
+                start_dt = datetime.datetime.strptime(start_time, "%H:%M")
+            except ValueError:
+                # Try with seconds if needed
+                start_dt = datetime.datetime.strptime(start_time, "%H:%M:%S")
+        elif isinstance(start_time, datetime.time):
+            # Handle time object directly
+            start_dt = datetime.datetime.combine(datetime.date.today(), start_time)
+        elif isinstance(start_time, datetime.timedelta):
+            # Handle timedelta (shouldn't normally happen, but just in case)
+            start_dt = datetime.datetime.min + start_time
+        else:
+            raise ValueError(f"start_time must be string (HH:MM) or datetime.time, got {type(start_time)}")
+
+        end_dt = start_dt + datetime.timedelta(minutes=duration_minutes)
+        return end_dt.time().strftime("%H:%M")
+                    
