@@ -69,3 +69,107 @@ class TutoringSystem:
         except Error as e:
             print(f"Database connection failed: {e}")
             raise
+
+    def init_db(self):
+        """Initializes database tables"""
+        try:
+            cursor = self.connection.cursor()
+
+            # Create tables if they don't exist
+            tables = [
+                '''CREATE TABLE IF NOT EXISTS students (
+                    student_id VARCHAR(15) PRIMARY KEY,
+                    name VARCHAR(25) NOT NULL,
+                    email VARCHAR(25) NOT NULL UNIQUE,
+                    password_hash VARCHAR(64) NOT NULL
+                )''',
+
+                '''CREATE TABLE IF NOT EXISTS tutors (
+                    tutor_id VARCHAR(15) PRIMARY KEY,
+                    name VARCHAR(25) NOT NULL,
+                    email VARCHAR(25) NOT NULL UNIQUE,
+                    password_hash VARCHAR(64) NOT NULL
+                )''',
+
+                '''CREATE TABLE IF NOT EXISTS session_requests (
+                    request_id VARCHAR(10) PRIMARY KEY,
+                    student_id VARCHAR(10) NOT NULL,
+                    subject VARCHAR(50) NOT NULL,
+                    topic VARCHAR(50) NOT NULL,
+                    level VARCHAR(20) NOT NULL,
+                    details TEXT,
+                    request_date DATE NOT NULL,
+                    status VARCHAR(20) DEFAULT 'pending',
+                    FOREIGN KEY (student_id) REFERENCES students(student_id)
+                )''',
+
+                '''CREATE TABLE IF NOT EXISTS request_participations (
+                    request_id VARCHAR(10),
+                    student_id VARCHAR(10),
+                    PRIMARY KEY (request_id, student_id),
+                    FOREIGN KEY (request_id) REFERENCES session_requests(request_id),
+                    FOREIGN KEY (student_id) REFERENCES students(student_id)
+                )''',
+
+                '''CREATE TABLE IF NOT EXISTS sessions (
+                    session_id VARCHAR(10) PRIMARY KEY,
+                    tutor_id VARCHAR(10) NOT NULL,
+                    subject VARCHAR(50) NOT NULL,
+                    topic VARCHAR(50) NOT NULL,
+                    level VARCHAR(20) NOT NULL,
+                    details TEXT,
+                    date DATE NOT NULL,
+                    start_time TIME NOT NULL,
+                    duration INT NOT NULL,
+                    end_time TIME NOT NULL,
+                    mode VARCHAR(20) NOT NULL,
+                    status VARCHAR(20) DEFAULT 'active',
+                    from_request BOOLEAN DEFAULT FALSE,
+                    request_id VARCHAR(10),
+                    location VARCHAR(100),
+                    online_link VARCHAR(255),
+                    FOREIGN KEY (tutor_id) REFERENCES tutors(tutor_id),
+                    FOREIGN KEY (request_id) REFERENCES session_requests(request_id),
+                    UNIQUE KEY unique_session_time (date, start_time, tutor_id)
+                )''',
+
+                '''CREATE TABLE IF NOT EXISTS registrations (
+                    registration_id INT AUTO_INCREMENT PRIMARY KEY,
+                    student_id VARCHAR(10) NOT NULL,
+                    session_id VARCHAR(10) NOT NULL,
+                    registration_date DATE NOT NULL,
+                    status VARCHAR(20) DEFAULT 'registered',
+                    FOREIGN KEY (student_id) REFERENCES students(student_id),
+                    FOREIGN KEY (session_id) REFERENCES sessions(session_id)
+                )''',
+
+                '''CREATE TABLE IF NOT EXISTS session_updates (
+                    update_id INT AUTO_INCREMENT PRIMARY KEY,
+                    session_id VARCHAR(10) NOT NULL,
+                    field_name VARCHAR(20) NOT NULL,
+                    old_value TEXT,
+                    new_value TEXT,
+                    update_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (session_id) REFERENCES sessions(session_id)
+                )''',
+
+                '''CREATE TABLE IF NOT EXISTS cancellations (
+                    cancellation_id INT AUTO_INCREMENT PRIMARY KEY,
+                    session_id VARCHAR(10),
+                    student_id VARCHAR(10),
+                    cancellation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    reason TEXT,
+                    FOREIGN KEY (session_id) REFERENCES sessions(session_id),
+                    FOREIGN KEY (student_id) REFERENCES students(student_id)
+                )'''
+            ]
+
+            for table in tables:
+                cursor.execute(table)
+
+            self.connection.commit()
+            cursor.close()
+
+        except Error as e:
+            print(f"Database initialization failed: {e}")
+            raise
