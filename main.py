@@ -266,3 +266,58 @@ class TutoringSystem:
         finally:
             if cursor:
                 cursor.close()
+
+    def register_user(self, role):
+        """Registers a new user"""
+        print(f"\nRegister as a new {role}")
+        name = self.get_valid_input_generic("Your Name: ", lambda x: len(x) > 0, "Name cannot be empty.")
+        email = self.get_valid_input_generic(
+            "Your Email: ",
+            lambda x: '@' in x and '.' in x,
+            "Please enter a valid email address."
+        )
+        password_hash = self.get_valid_input()  # calls the password input + validation + hashing
+
+        try:
+            cursor = self.connection.cursor(dictionary=True)
+
+            # Check for existing accounts
+            cursor.execute('''
+                SELECT student_id AS id, 'student' AS role FROM students WHERE email = %s
+                UNION
+                SELECT tutor_id AS id, 'tutor' AS role FROM tutors WHERE email = %s
+            ''', (email, email))
+
+            existing = cursor.fetchall()
+
+            if existing:
+                print("\nAccount with this email exists:")
+                for acc in existing:
+                    print(f"- {acc['role'].capitalize()} ID: {acc['id']}")
+
+                if any(acc['role'] == role for acc in existing):
+                    print(f"\nYou already have a {role} account. Please login.")
+                    return None
+
+                if input(f"\nRegister as new {role} with this email? (yes/no): ").lower() != 'yes':
+                    return None
+
+            # Create new account
+            user_id = self.generate_id(role)
+            table = 'students' if role == 'student' else 'tutors'
+            cursor.execute(
+                f"INSERT INTO {table} ({role}_id, name, email, password_hash) VALUES (%s, %s, %s, %s)",
+                (user_id, name, email, password_hash)
+            )
+
+            self.connection.commit()
+            print(f"\nRegistration successful! Your {role} ID is: {user_id}")
+            return user_id
+
+        except Error as e:
+            print(f"Registration error: {e}")
+            self.connection.rollback()
+            return None
+        finally:
+            if cursor:
+                cursor.close()
