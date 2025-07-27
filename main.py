@@ -25,3 +25,47 @@ class TutoringSystem:
             'database': 'tms',
             'ssl_disabled': False
         }
+
+    def connect_to_database(self):
+        """Establishes database connection and creates database if needed"""
+        config = self.get_db_config()
+
+        try:
+            # First connect without specifying a database
+            temp_connection = mysql.connector.connect(
+                host=config['host'],
+                port=config['port'],
+                user=config['user'],
+                password=config['password'],
+                ssl_disabled=config['ssl_disabled']
+            )
+
+            cursor = temp_connection.cursor()
+
+            # Check if database exists
+            cursor.execute(f"SHOW DATABASES LIKE '{config['database']}'")
+            result = cursor.fetchone()
+
+            if not result:
+                # Create the database if it doesn't exist
+                cursor.execute(f"CREATE DATABASE {config['database']}")
+                print(f"Created database {config['database']}")
+
+            cursor.close()
+            temp_connection.close()
+
+            # Now connect to the specific database
+            self.connection = mysql.connector.connect(
+                host=config['host'],
+                port=config['port'],
+                user=config['user'],
+                password=config['password'],
+                database=config['database'],
+                ssl_disabled=config['ssl_disabled']
+            )
+
+            print("Successfully connected to database")
+
+        except Error as e:
+            print(f"Database connection failed: {e}")
+            raise
