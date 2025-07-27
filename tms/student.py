@@ -1,5 +1,7 @@
 import datetime
+from getpass import getpass
 from mysql.connector import Error
+
 
 def student_flow(system):
     """Student dashboard with direct session viewing/registration"""
@@ -10,7 +12,7 @@ def student_flow(system):
         print("3. My Schedule - View/Cancel")
         print("4. Logout")
 
-        choice = input("Enter your choice (1-4): ")
+        choice = input("Enter your choice (1-4): ").strip()
 
         if choice == '1':
             student_view_and_register_sessions(system)
@@ -25,7 +27,7 @@ def student_flow(system):
             system.current_user_name = None
             break
         else:
-            print("Invalid choice. Please try again.")
+            print("Invalid choice. Please enter a number between 1-4.")
 
 
 def register_for_session(system, session):
@@ -33,7 +35,7 @@ def register_for_session(system, session):
     try:
         cursor = system.connection.cursor(dictionary=True)
 
-        # First check if already registered for this session
+        # Check if already registered
         cursor.execute('''
             SELECT 1 FROM registrations 
             WHERE student_id = %s AND session_id = %s AND status = 'registered'
@@ -43,7 +45,7 @@ def register_for_session(system, session):
             print("\n⚠️ You are already registered for this session!")
             return False
 
-        # Check for time collisions on same date
+        # Check for time conflicts
         cursor.execute('''
             SELECT s.session_id, s.subject, s.start_time, s.end_time
             FROM registrations r
@@ -63,12 +65,15 @@ def register_for_session(system, session):
             session['start_time'], session['end_time']
         ))
 
-        conflicting_sessions = cursor.fetchall()
-        if conflicting_sessions:
-            print("\n⏰ You have conflicting sessions on the same date:")
-            for conflict in conflicting_sessions:
+        conflicts = cursor.fetchall()
+        if conflicts:
+            print("\n⏰ Time conflict with existing sessions:")
+            for conflict in conflicts:
                 print(f"- {conflict['subject']} ({conflict['start_time']}-{conflict['end_time']})")
-            if input("\nRegister anyway? (yes/no): ").lower() != 'yes':
+            choice = input("\nRegister anyway? (yes/no): ").lower()
+            while choice not in ['yes', 'no', 'y', 'n']:
+                choice = input("Please enter 'yes' or 'no': ").lower()
+            if choice in ['no', 'n']:
                 return False
 
         # Register for session
@@ -94,6 +99,7 @@ def register_for_session(system, session):
     finally:
         cursor.close()
 
+
 def student_view_and_register_sessions(system):
     """Show all available sessions with registration option"""
     try:
@@ -101,7 +107,8 @@ def student_view_and_register_sessions(system):
         cursor.execute('''
             SELECT s.session_id, s.subject, s.topic, s.date, 
                    s.start_time, s.end_time, s.duration, s.mode,
-                   t.name AS tutor_name, s.location, s.online_link
+                   t.name AS tutor_name, t.email AS tutor_email,
+                   s.location, s.online_link, s.details
             FROM sessions s
             JOIN tutors t ON s.tutor_id = t.tutor_id
             WHERE s.status = 'active' AND s.date >= CURDATE()
@@ -119,33 +126,44 @@ def student_view_and_register_sessions(system):
         for idx, session in enumerate(sessions, 1):
             print(f"\n{idx}. Subject: {session['subject']} - {session['topic']}")
             print(f"   Date: {session['date']} | Time: {session['start_time']}-{session['end_time']}")
-            print(f"   Duration: {session['duration']} minutes | Mode: {session['mode']}")
-            print(f"   Tutor: {session['tutor_name']}")
+            print(f"   Duration: {session['duration']} min | Mode: {session['mode']}")
+            print(f"   Tutor: {session['tutor_name']} ({session['tutor_email']})")
             if session['mode'] == 'Online':
-                print(f"   Online Link: {session['online_link']}")
+                print(f"   Link: {session['online_link']}")
             else:
                 print(f"   Location: {session['location']}")
-            print(f"   Details: {session.get('details', 'No details available')}")
+            print(f"   Details: {session['details'] or 'No details available'}")
 
         while True:
             selection = input("\nEnter session numbers to register (comma separated, 0 to cancel): ").strip()
             if selection == '0':
                 break
 
-            selected_indices = [s.strip() for s in selection.split(',')]
-            registered_count = 0
-
-            for idx_str in selected_indices:
-                if not idx_str.isdigit():
+            selected_indices = []
+            for s in selection.split(','):
+                s = s.strip()
+                if not s.isdigit():
+                    print(f"Invalid input '{s}'. Please enter numbers only.")
                     continue
-
-                idx = int(idx_str) - 1
+                idx = int(s) - 1
                 if 0 <= idx < len(sessions):
-                    session = sessions[idx]
-                    if register_for_session(system, session):
-                        registered_count += 1
+                    selected_indices.append(idx)
+                else:
+                    print(f"Invalid session number {s}. Please enter numbers between 1-{len(sessions)}")
 
-            print(f"\nSuccessfully registered for {registered_count} sessions")
+            if not selected_indices:
+                continue
+
+            registered_count = 0
+            for idx in selected_indices:
+                if register_for_session(system, sessions[idx]):
+                    registered_count += 1
+
+            if registered_count > 0:
+                print(f"\n✅ Successfully registered for {registered_count} session(s)")
+            else:
+                print("\nNo sessions were registered")
+
             if input("\nRegister for more sessions? (y/n): ").lower() != 'y':
                 break
 
@@ -155,6 +173,7 @@ def student_view_and_register_sessions(system):
     finally:
         cursor.close()
 
+
 def student_requests_menu(system):
     """Menu for managing session requests"""
     while True:
@@ -163,7 +182,7 @@ def student_requests_menu(system):
         print("2. Create new request")
         print("3. Back to Dashboard")
 
-        choice = input("Enter your choice (1-3): ")
+        choice = input("Enter your choice (1-3): ").strip()
 
         if choice == '1':
             student_view_and_confirm_requests(system)
@@ -172,7 +191,8 @@ def student_requests_menu(system):
         elif choice == '3':
             break
         else:
-            print("Invalid choice. Please try again.")
+            print("Invalid choice. Please enter 1-3.")
+
 
 def student_view_and_confirm_requests(system):
     """View and confirm interest in pending requests"""
@@ -206,15 +226,18 @@ def student_view_and_confirm_requests(system):
             if req['is_participant']:
                 print("✅ You have confirmed participation in this request")
             else:
-                confirm = input("\nWould you like to confirm participation in this request? (yes/no): ").lower()
-                if confirm == 'yes':
+                confirm = input("\nWould you like to confirm participation? (yes/no): ").lower()
+                while confirm not in ['yes', 'no', 'y', 'n']:
+                    confirm = input("Please enter 'yes' or 'no': ").lower()
+
+                if confirm in ['yes', 'y']:
                     try:
                         cursor.execute('''
                             INSERT INTO request_participations (request_id, student_id)
                             VALUES (%s, %s)
                         ''', (req['request_id'], system.current_user_id))
                         system.connection.commit()
-                        print("Thank you for confirming your interest!")
+                        print("✅ Thank you for confirming your interest!")
                     except Error as e:
                         if "PRIMARY" in str(e):
                             print("You've already participated in this request.")
@@ -227,16 +250,18 @@ def student_view_and_confirm_requests(system):
     finally:
         cursor.close()
 
+
 def _create_new_request(system):
     """Helper method to create a new session request"""
-    print("\nRequest a New Session Topic")
+    print("\n📝 Request a New Session Topic")
     request_data = {
         "student_id": system.current_user_id,
         "subject": system.get_valid_input("Subject: ", lambda x: len(x) > 0),
         "topic": system.get_valid_input("Topic: ", lambda x: len(x) > 0),
         "level": system.get_valid_input(
             "Level (Beginner/Intermediate/Advanced): ",
-            lambda x: x.lower() in ['beginner', 'intermediate', 'advanced']
+            lambda x: x.lower() in ['beginner', 'intermediate', 'advanced'],
+            "Please enter Beginner, Intermediate, or Advanced"
         ).capitalize(),
         "details": input("Additional details about what you want to learn: "),
         "request_date": datetime.datetime.now().strftime("%Y-%m-%d"),
@@ -269,9 +294,9 @@ def _create_new_request(system):
                 ''', (existing_request['request_id'], system.current_user_id))
 
                 system.connection.commit()
-                print("\nSimilar request found! Added your interest to the existing request.")
+                print("\n✅ Similar request found! Added your interest to the existing request.")
 
-                # Get count of participants
+                # Get participant count
                 cursor.execute('''
                     SELECT COUNT(*) AS count
                     FROM request_participations
@@ -316,14 +341,15 @@ def _create_new_request(system):
 
 
 def student_view_scheduled(system):
-    """Student views their scheduled sessions in the requested format"""
+    """Student views their scheduled sessions with tutor email"""
     try:
         cursor = system.connection.cursor(dictionary=True)
         cursor.execute('''
-            SELECT s.session_id, s.subject, s.topic, s.level, s.date, s.start_time, s.end_time,
-                   s.mode, s.details, r.registration_date, t.name AS tutor_name,
+            SELECT s.session_id, s.subject, s.topic, s.level, s.date, 
+                   s.start_time, s.end_time, s.duration, s.mode, s.details, 
+                   r.registration_date, t.name AS tutor_name, t.email AS tutor_email,
                    NULL AS request_id, NULL AS request_date, r.registration_id,
-                   s.location, s.online_link, s.duration
+                   s.location, s.online_link
             FROM registrations r
             JOIN sessions s ON r.session_id = s.session_id
             JOIN tutors t ON s.tutor_id = t.tutor_id
@@ -332,10 +358,11 @@ def student_view_scheduled(system):
 
             UNION
 
-            SELECT s.session_id, s.subject, s.topic, s.level, s.date, s.start_time, s.end_time,
-                   s.mode, s.details, NULL AS registration_date, t.name AS tutor_name,
+            SELECT s.session_id, s.subject, s.topic, s.level, s.date, 
+                   s.start_time, s.end_time, s.duration, s.mode, s.details,
+                   NULL AS registration_date, t.name AS tutor_name, t.email AS tutor_email,
                    sr.request_id, sr.request_date, NULL AS registration_id,
-                   s.location, s.online_link, s.duration
+                   s.location, s.online_link
             FROM request_participations rp
             JOIN session_requests sr ON rp.request_id = sr.request_id
             JOIN sessions s ON sr.request_id = s.request_id
@@ -362,31 +389,33 @@ def student_view_scheduled(system):
                 if session['registration_date']:
                     print(f"Registration Date: {session['registration_date']}")
 
-            print(
-                f"Date: {session['date']} | Time: {session['start_time']}-{session['end_time']} | Duration: {session['duration']} minutes")
-            print(
-                f"Subject: {session['subject']} - {session['topic']} | Level: {session['level']} | Tutor: {session['tutor_name']}")
+            print(f"\nSubject: {session['subject']} - {session['topic']}")
+            print(f"Level: {session['level']}")
+            print(f"Date: {session['date']} | Time: {session['start_time']}-{session['end_time']}")
+            print(f"Duration: {session['duration']} minutes | Mode: {session['mode']}")
+            print(f"Tutor: {session['tutor_name']} ({session['tutor_email']})")
 
             if session['mode'] == 'Online':
-                print(f"Mode: Online | Link: {session['online_link']}")
+                print(f"Online Link: {session['online_link']}")
             else:
-                print(f"Mode: In-person | Location: {session['location']}")
+                print(f"Location: {session['location']}")
 
-            print(f"Details: {session['details']}")
+            print(f"Details: {session['details'] or 'No additional details'}")
 
     except Error as e:
         print(f"\nError viewing scheduled sessions: {e}")
     finally:
         cursor.close()
 
+
 def student_cancel_session(system):
-    """Allows student to cancel one or more registered sessions"""
+    """Allows student to cancel registered sessions with validation"""
     try:
-        # Show registered sessions with full details
         cursor = system.connection.cursor(dictionary=True)
         cursor.execute('''
             SELECT s.session_id, s.subject, s.topic, s.date, s.start_time, s.end_time,
-                   s.mode, t.name AS tutor_name, s.location, s.online_link
+                   s.mode, t.name AS tutor_name, t.email AS tutor_email,
+                   s.location, s.online_link, r.registration_id
             FROM registrations r
             JOIN sessions s ON r.session_id = s.session_id
             JOIN tutors t ON s.tutor_id = t.tutor_id
@@ -406,61 +435,91 @@ def student_cancel_session(system):
             print(f"\n{idx}. Subject: {session['subject']} - {session['topic']}")
             print(f"   Date: {session['date']} | Time: {session['start_time']}-{session['end_time']}")
             print(f"   Mode: {session['mode']}")
-            print(f"   Tutor: {session['tutor_name']}")
+            print(f"   Tutor: {session['tutor_name']} ({session['tutor_email']})")
             if session['mode'] == 'Online':
                 print(f"   Online Link: {session['online_link']}")
             else:
                 print(f"   Location: {session['location']}")
 
-        session_ids = input("\nEnter session numbers to cancel (comma separated, or 'cancel' to go back): ").strip()
-        if session_ids.lower() == 'cancel':
-            return
+        while True:
+            session_input = input(
+                "\nEnter session numbers to cancel (comma separated, or 'cancel' to go back): ").strip()
+            if session_input.lower() == 'cancel':
+                return
 
-        selected_indices = [s.strip() for s in session_ids.split(',')]
-        cancelled_count = 0
+            selected_indices = []
+            valid_input = True
 
-        for idx_str in selected_indices:
-            if not idx_str.isdigit():
+            for s in session_input.split(','):
+                s = s.strip()
+                if not s.isdigit():
+                    print(f"Invalid input '{s}'. Please enter numbers only.")
+                    valid_input = False
+                    break
+                idx = int(s) - 1
+                if 0 <= idx < len(sessions):
+                    selected_indices.append(idx)
+                else:
+                    print(f"Invalid session number {s}. Please enter numbers between 1-{len(sessions)}")
+                    valid_input = False
+                    break
+
+            if not valid_input or not selected_indices:
                 continue
 
-            idx = int(idx_str) - 1
-            if 0 <= idx < len(sessions):
+            cancelled_count = 0
+            for idx in selected_indices:
                 session = sessions[idx]
-                reason = input(f"Reason for cancelling {session['subject']} session: ")
-                confirm = input(f"Are you sure you want to cancel this session? (yes/no): ").lower()
 
-                if confirm == 'yes':
-                    try:
-                        cursor.execute("START TRANSACTION")
+                reason = input(f"\nReason for cancelling {session['subject']} session: ").strip()
+                while not reason:
+                    reason = input("Please enter a cancellation reason: ").strip()
 
-                        # Update registration status
-                        cursor.execute('''
-                            UPDATE registrations
-                            SET status = 'cancelled'
-                            WHERE student_id = %s AND session_id = %s
-                            AND status = 'registered'
-                        ''', (system.current_user_id, session['session_id']))
+                confirm = input(f"Confirm cancel {session['subject']} on {session['date']}? (yes/no): ").lower()
+                while confirm not in ['yes', 'no', 'y', 'n']:
+                    confirm = input("Please enter 'yes' or 'no': ").lower()
 
-                        # Record cancellation
-                        cursor.execute('''
-                            INSERT INTO cancellations (session_id, student_id, reason)
-                            VALUES (%s, %s, %s)
-                        ''', (session['session_id'], system.current_user_id, reason))
+                if confirm in ['no', 'n']:
+                    print(f"Skipping cancellation for session {idx + 1}")
+                    continue
 
-                        system.connection.commit()
-                        cancelled_count += 1
-                        print(f"✅ Session {session['session_id']} has been cancelled.")
+                try:
+                    cursor.execute("START TRANSACTION")
 
-                    except Error as e:
-                        system.connection.rollback()
-                        print(f"\nError cancelling session: {e}")
+                    # Update registration status
+                    cursor.execute('''
+                        UPDATE registrations
+                        SET status = 'cancelled'
+                        WHERE registration_id = %s
+                    ''', (session['registration_id'],))
 
-        print(f"\nSuccessfully cancelled {cancelled_count} sessions")
+                    # Record cancellation
+                    cursor.execute('''
+                        INSERT INTO cancellations (session_id, student_id, reason)
+                        VALUES (%s, %s, %s)
+                    ''', (session['session_id'], system.current_user_id, reason))
+
+                    system.connection.commit()
+                    cancelled_count += 1
+                    print(f"✅ Cancelled: {session['subject']} on {session['date']}")
+
+                except Error as e:
+                    system.connection.rollback()
+                    print(f"Error cancelling session: {e}")
+
+            if cancelled_count > 0:
+                print(f"\nSuccessfully cancelled {cancelled_count} session(s)")
+            else:
+                print("\nNo sessions were cancelled")
+
+            if input("\nCancel more sessions? (y/n): ").lower() != 'y':
+                break
 
     except Error as e:
         print(f"\nError processing cancellation: {e}")
     finally:
         cursor.close()
+
 
 def student_schedule_menu(system):
     """Menu for viewing and managing scheduled sessions"""
@@ -470,7 +529,7 @@ def student_schedule_menu(system):
         print("2. Cancel one or more sessions")
         print("3. Back to Dashboard")
 
-        choice = input("Enter your choice (1-3): ")
+        choice = input("Enter your choice (1-3): ").strip()
 
         if choice == '1':
             student_view_scheduled(system)
@@ -479,4 +538,4 @@ def student_schedule_menu(system):
         elif choice == '3':
             break
         else:
-            print("Invalid choice. Please try again.")
+            print("Invalid choice. Please enter 1-3.")
