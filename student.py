@@ -520,7 +520,7 @@ def student_cancel_session(system):
 
                     system.connection.commit()
                     cancelled_count += 1
-                    print(f"✅ Cancelled: {session['subject']} on {session['date']}")
+                    print(f" Cancelled: {session['subject']} on {session['date']}")
 
                 except Error as e:
                     system.connection.rollback()
@@ -538,3 +538,23 @@ def student_cancel_session(system):
         print(f"\nError processing cancellation: {e}")
     finally:
         cursor.close()
+
+"""Student Schedule Menu"""
+def student_schedule_menu(system):
+    """Menu for viewing and managing scheduled sessions"""
+    while True:
+        print("\n My Scheduled Sessions")
+        print("1. View all scheduled sessions")
+        print("2. Cancel one or more sessions")
+        print("3. Back to Dashboard")
+
+        choice = input("Enter your choice (1-3): ").strip()
+
+        if choice == '1':
+            student_view_scheduled(system)
+        elif choice == '2':
+            student_cancel_session(system)
+        elif choice == '3':
+            break
+        else:
+            print("Invalid choice. Please enter 1-3.")
