@@ -83,3 +83,47 @@ GroupCodingLab-16-_TutorManagementSystem/
    python3 main.py
    ```
 
+##  Usage Guide
+
+### Student Flow
+
+* Register or log in
+* View available sessions
+* Register or cancel session bookings
+* Submit topic requests if needed
+
+### Tutor Flow
+
+* Register or log in
+* Create tutoring sessions
+* View/approve topic requests
+* Edit or delete sessions as needed
+
+---
+
+##  Key Components
+
+###  Classes & Functions
+
+* `TutoringSystem` — Main orchestrator (in `main.py`)
+* `student_flow()` — Student menu logic
+* `tutor_flow()` — Tutor menu logic
+
+###  Core Functions
+
+* `register_user()` — Creates new student/tutor accounts
+* `login_user()` — Authenticates users
+* `register_for_session()` — Registers students into a session
+* `tutor_post_session()` — Lets tutors post sessions
+* `handle_requests()` — Manages topic requests
+
+---
+
+## Authors and creatorss
+- Bonane NIYIGENA
+- Rhoda Nicole Umutesi
+- Fabrice Mbarushimana
+- Maxime Hirwa  Lilian
+- Muhammed Awwal Achuja
+- Nyiramanzi Igihozo
+
