@@ -272,7 +272,7 @@ def student_view_and_confirm_requests(system):
 """User new request"""
 def _create_new_request(system):
     """Helper method to create a new session request"""
-    print("\n📝 Request a New Session Topic")
+    print("\nRequest a New Session Topic")
     request_data = {
         "student_id": system.current_user_id,
         "subject": system.get_valid_input("Subject: ", lambda x: len(x) > 0),
@@ -313,7 +313,7 @@ def _create_new_request(system):
                 ''', (existing_request['request_id'], system.current_user_id))
 
                 system.connection.commit()
-                print("\n✅ Similar request found! Added your interest to the existing request.")
+                print("\n Similar request found! Added your interest to the existing request.")
 
                 # Get participant count
                 cursor.execute('''
@@ -350,7 +350,7 @@ def _create_new_request(system):
             ''', (request_id, system.current_user_id))
 
             system.connection.commit()
-            print("\n✅ Your session request has been submitted! Tutors will be notified.")
+            print("\n Your session request has been submitted! Tutors will be notified.")
 
     except Error as e:
         print(f"\nError processing request: {e}")
