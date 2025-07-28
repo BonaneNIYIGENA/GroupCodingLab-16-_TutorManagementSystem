@@ -357,8 +357,7 @@ def _create_new_request(system):
         system.connection.rollback()
     finally:
         cursor.close()
-
-        
+       
 """Student schedule view"""        
 def student_view_scheduled(system):
     """Student views their scheduled sessions with tutor email"""
@@ -427,4 +426,115 @@ def student_view_scheduled(system):
     finally:
         cursor.close()
 
+"""Student cancel session"""
+def student_cancel_session(system):
+    """Allows student to cancel registered sessions with validation"""
+    try:
+        cursor = system.connection.cursor(dictionary=True)
+        cursor.execute('''
+            SELECT s.session_id, s.subject, s.topic, s.date, s.start_time, s.end_time,
+                   s.mode, t.name AS tutor_name, t.email AS tutor_email,
+                   s.location, s.online_link, r.registration_id
+            FROM registrations r
+            JOIN sessions s ON r.session_id = s.session_id
+            JOIN tutors t ON s.tutor_id = t.tutor_id
+            WHERE r.student_id = %s AND r.status = 'registered'
+            AND s.date >= CURDATE()
+            ORDER BY s.date, s.start_time
+        ''', (system.current_user_id,))
 
+        sessions = cursor.fetchall()
+
+        if not sessions:
+            print("\nYou have no sessions to cancel.")
+            return
+
+        print("\nYour Registered Sessions:")
+        for idx, session in enumerate(sessions, 1):
+            print(f"\n{idx}. Subject: {session['subject']} - {session['topic']}")
+            print(f"   Date: {session['date']} | Time: {session['start_time']}-{session['end_time']}")
+            print(f"   Mode: {session['mode']}")
+            print(f"   Tutor: {session['tutor_name']} ({session['tutor_email']})")
+            if session['mode'] == 'Online':
+                print(f"   Online Link: {session['online_link']}")
+            else:
+                print(f"   Location: {session['location']}")
+
+        while True:
+            session_input = input(
+                "\nEnter session numbers to cancel (comma separated, or 'cancel' to go back): ").strip()
+            if session_input.lower() == 'cancel':
+                return
+
+            selected_indices = []
+            valid_input = True
+
+            for s in session_input.split(','):
+                s = s.strip()
+                if not s.isdigit():
+                    print(f"Invalid input '{s}'. Please enter numbers only.")
+                    valid_input = False
+                    break
+                idx = int(s) - 1
+                if 0 <= idx < len(sessions):
+                    selected_indices.append(idx)
+                else:
+                    print(f"Invalid session number {s}. Please enter numbers between 1-{len(sessions)}")
+                    valid_input = False
+                    break
+
+            if not valid_input or not selected_indices:
+                continue
+
+            cancelled_count = 0
+            for idx in selected_indices:
+                session = sessions[idx]
+
+                reason = input(f"\nReason for cancelling {session['subject']} session: ").strip()
+                while not reason:
+                    reason = input("Please enter a cancellation reason: ").strip()
+
+                confirm = input(f"Confirm cancel {session['subject']} on {session['date']}? (yes/no): ").lower()
+                while confirm not in ['yes', 'no', 'y', 'n']:
+                    confirm = input("Please enter 'yes' or 'no': ").lower()
+
+                if confirm in ['no', 'n']:
+                    print(f"Skipping cancellation for session {idx + 1}")
+                    continue
+
+                try:
+                    cursor.execute("START TRANSACTION")
+
+                    # Update registration status
+                    cursor.execute('''
+                        UPDATE registrations
+                        SET status = 'cancelled'
+                        WHERE registration_id = %s
+                    ''', (session['registration_id'],))
+
+                    # Record cancellation
+                    cursor.execute('''
+                        INSERT INTO cancellations (session_id, student_id, reason)
+                        VALUES (%s, %s, %s)
+                    ''', (session['session_id'], system.current_user_id, reason))
+
+                    system.connection.commit()
+                    cancelled_count += 1
+                    print(f"✅ Cancelled: {session['subject']} on {session['date']}")
+
+                except Error as e:
+                    system.connection.rollback()
+                    print(f"Error cancelling session: {e}")
+
+            if cancelled_count > 0:
+                print(f"\nSuccessfully cancelled {cancelled_count} session(s)")
+            else:
+                print("\nNo sessions were cancelled")
+
+            if input("\nCancel more sessions? (y/n): ").lower() != 'y':
+                break
+
+    except Error as e:
+        print(f"\nError processing cancellation: {e}")
+    finally:
+        cursor.close()
