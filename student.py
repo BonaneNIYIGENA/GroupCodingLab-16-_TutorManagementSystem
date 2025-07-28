@@ -275,9 +275,9 @@ def _create_new_request(system):
     print("\nRequest a New Session Topic")
     request_data = {
         "student_id": system.current_user_id,
-        "subject": system.get_valid_input("Subject: ", lambda x: len(x) > 0),
-        "topic": system.get_valid_input("Topic: ", lambda x: len(x) > 0),
-        "level": system.get_valid_input(
+        "subject": system.get_valid_input_generic("Subject: ", lambda x: len(x) > 0),
+        "topic": system.get_valid_input_generic("Topic: ", lambda x: len(x) > 0),
+        "level": system.get_valid_input_generic(
             "Level (Beginner/Intermediate/Advanced): ",
             lambda x: x.lower() in ['beginner', 'intermediate', 'advanced'],
             "Please enter Beginner, Intermediate, or Advanced"
@@ -357,7 +357,7 @@ def _create_new_request(system):
         system.connection.rollback()
     finally:
         cursor.close()
-       
+               
 """Student schedule view"""        
 def student_view_scheduled(system):
     """Student views their scheduled sessions with tutor email"""
