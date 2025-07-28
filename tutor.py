@@ -149,7 +149,12 @@ def tutor_view_requests(system):
 
         # Get pending requests with participant counts
         cursor.execute('''
-            SELECT sr.request_id, sr.subject, sr.topic, sr.level, sr.details, COUNT(rp.student_id) AS participant_count FROM session_requests sr LEFT JOIN request_participations rp ON sr.request_id = rp.request_id WHERE sr.status = 'pending' GROUP BY sr.request_id, sr.subject, sr.topic, sr.level, sr.details
+            SELECT sr.request_id, sr.subject, sr.topic, sr.level, sr.details, 
+                   COUNT(rp.student_id) AS participant_count 
+            FROM session_requests sr 
+            LEFT JOIN request_participations rp ON sr.request_id = rp.request_id 
+            WHERE sr.status = 'pending' 
+            GROUP BY sr.request_id, sr.subject, sr.topic, sr.level, sr.details
         ''')
 
         pending_requests = cursor.fetchall()
@@ -176,10 +181,27 @@ def tutor_view_requests(system):
                     "topic": req['topic'],
                     "level": req['level'],
                     "details": req['details'],
-                    "date": system.get_valid_input("Date (YYYY-MM-DD): ", lambda x: len(x) == 10 and x[4] == '-' and x[7] == '-' and datetime.datetime.strptime(x, "%Y-%m-%d") >= datetime.datetime.now()),
-                    "start_time": system.get_valid_input("Start Time (HH:MM): ", lambda x: len(x) == 5 and x[2] == ':'),
-                    "duration": int(system.get_valid_input("Duration (minutes): ", lambda x: x.isdigit() and int(x) > 0)),
-                    "mode": system.get_valid_input("Mode (1. Online / 2. In-person): ", lambda x: x in ['1', '2'])
+                    "date": system.get_valid_input_generic(
+                        "Date (YYYY-MM-DD): ", 
+                        lambda x: len(x) == 10 and x[4] == '-' and x[7] == '-' and 
+                                 datetime.datetime.strptime(x, "%Y-%m-%d") >= datetime.datetime.now(),
+                        "Please enter a valid future date in YYYY-MM-DD format"
+                    ),
+                    "start_time": system.get_valid_input_generic(
+                        "Start Time (HH:MM): ", 
+                        lambda x: len(x) == 5 and x[2] == ':',
+                        "Please enter time in HH:MM format"
+                    ),
+                    "duration": int(system.get_valid_input_generic(
+                        "Duration (minutes): ", 
+                        lambda x: x.isdigit() and int(x) > 0,
+                        "Please enter a positive number"
+                    )),
+                    "mode": system.get_valid_input_generic(
+                        "Mode (1. Online / 2. In-person): ", 
+                        lambda x: x in ['1', '2'],
+                        "Please enter 1 or 2"
+                    )
                 }
 
                 # Convert mode selection
@@ -190,10 +212,18 @@ def tutor_view_requests(system):
 
                 # Get mode-specific details
                 if session_data['mode'] == 'In-person':
-                    session_data['location'] = system.get_valid_input("Location: ", lambda x: len(x) > 0)
+                    session_data['location'] = system.get_valid_input_generic(
+                        "Location: ", 
+                        lambda x: len(x) > 0,
+                        "Location cannot be empty"
+                    )
                     session_data['online_link'] = None
                 else:
-                    session_data['online_link'] = system.get_valid_input("Online meeting link: ", lambda x: len(x) > 0)
+                    session_data['online_link'] = system.get_valid_input_generic(
+                        "Online meeting link: ", 
+                        lambda x: len(x) > 0,
+                        "Link cannot be empty"
+                    )
                     session_data['location'] = None
 
                 # Final confirmation
@@ -209,8 +239,18 @@ def tutor_view_requests(system):
                     # Create the session
                     session_id = system.generate_id('session')
                     cursor.execute('''
-                        INSERT INTO sessions (session_id, tutor_id, subject, topic, level, details, date, start_time, duration, end_time, mode, status, from_request, request_id, location, online_link) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    ''', (session_id, session_data['tutor_id'], session_data['subject'], session_data['topic'], session_data['level'], session_data['details'], session_data['date'], session_data['start_time'], session_data['duration'], session_data['end_time'], session_data['mode'], 'active', True, req['request_id'], session_data['location'], session_data['online_link']))
+                        INSERT INTO sessions (
+                            session_id, tutor_id, subject, topic, level, details, 
+                            date, start_time, duration, end_time, mode, status, 
+                            from_request, request_id, location, online_link
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ''', (
+                        session_id, session_data['tutor_id'], session_data['subject'],
+                        session_data['topic'], session_data['level'], session_data['details'],
+                        session_data['date'], session_data['start_time'], session_data['duration'],
+                        session_data['end_time'], session_data['mode'], 'active',
+                        True, req['request_id'], session_data['location'], session_data['online_link']
+                    ))
 
                     # Update request status
                     cursor.execute('''
@@ -225,7 +265,9 @@ def tutor_view_requests(system):
 
                     for participant in participants:
                         cursor.execute('''
-                            INSERT INTO registrations (student_id, session_id, registration_date, status) VALUES (%s, %s, %s, %s)
+                            INSERT INTO registrations (
+                                student_id, session_id, registration_date, status
+                            ) VALUES (%s, %s, %s, %s)
                         ''', (
                             participant['student_id'], session_id,
                             datetime.datetime.now().strftime("%Y-%m-%d"), "registered"
@@ -245,7 +287,7 @@ def tutor_view_requests(system):
         print(f"\nError viewing requests: {e}")
     finally:
         cursor.close()
-
+        
 def _update_session_with_id(system, session_id):
     """Helper method to update a specific session"""
     session = system.get_session_details(session_id)
