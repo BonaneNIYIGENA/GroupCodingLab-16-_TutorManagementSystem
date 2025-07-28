@@ -30,20 +30,19 @@ def tutor_post_session(system):
 
     session_data = {
         "tutor_id": system.current_user_id,
-        "subject": system.get_valid_input("Subject: ", lambda x: len(x) > 0),
-        "topic": system.get_valid_input("Topic: ", lambda x: len(x) > 0),
-        "level": system.get_valid_input(
+        "subject": system.get_valid_input_generic("Subject: ", lambda x: len(x) > 0),
+        "topic": system.get_valid_input_generic("Topic: ", lambda x: len(x) > 0),
+        "level": system.get_valid_input_generic(
             "Level (Beginner/Intermediate/Advanced): ",
             lambda x: x.lower() in ['beginner', 'intermediate', 'advanced']
         ).capitalize(),
         "details": input("Details: "),
-        "date": system.get_valid_input(
+        "date": system.get_valid_input_generic(
             "Date (YYYY-MM-DD): ",
             lambda x: len(x) == 10 and x[4] == '-' and x[7] == '-' and
                       datetime.datetime.strptime(x, "%Y-%m-%d") >= datetime.datetime.now()
         )
     }
-
     # Time entry with immediate conflict check
     while True:
         session_data['start_time'] = system.get_valid_input("Start Time (HH:MM): ", lambda x: len(x) == 5 and x[2] == ':')
