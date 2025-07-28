@@ -210,3 +210,63 @@ def student_requests_menu(system):
             break
         else:
             print("Invalid choice. Please enter 1-3.")
+
+
+"""Confirm student request"""
+def student_view_and_confirm_requests(system):
+    """View and confirm interest in pending requests"""
+    try:
+        cursor = system.connection.cursor(dictionary=True)
+        cursor.execute('''
+            SELECT sr.request_id, sr.subject, sr.topic, sr.level, sr.details,
+                   COUNT(rp.student_id) AS participant_count,
+                   MAX(CASE WHEN rp.student_id = %s THEN 1 ELSE 0 END) AS is_participant
+            FROM session_requests sr
+            LEFT JOIN request_participations rp ON sr.request_id = rp.request_id
+            WHERE sr.status = 'pending'
+            GROUP BY sr.request_id, sr.subject, sr.topic, sr.level, sr.details
+            ORDER BY sr.request_date DESC
+        ''', (system.current_user_id,))
+
+        pending_requests = cursor.fetchall()
+
+        if not pending_requests:
+            print("\nNo pending session requests at this time.")
+            return
+
+        print("\n Pending Session Requests:")
+        for req in pending_requests:
+            print(f"\nRequest ID: {req['request_id']}")
+            print(f"Subject: {req['subject']} - {req['topic']}")
+            print(f"Level: {req['level']}")
+            print(f"Requested by: {req['participant_count']} students")
+            print(f"Details: {req['details']}")
+
+            if req['is_participant']:
+                print(" You have confirmed participation in this request")
+            else:
+                confirm = input("\nWould you like to confirm participation? (yes/no): ").lower()
+                while confirm not in ['yes', 'no', 'y', 'n']:
+                    confirm = input("Please enter 'yes' or 'no': ").lower()
+
+                if confirm in ['yes', 'y']:
+                    try:
+                        cursor.execute('''
+                            INSERT INTO request_participations (request_id, student_id)
+                            VALUES (%s, %s)
+                        ''', (req['request_id'], system.current_user_id))
+                        system.connection.commit()
+                        print(" Thank you for confirming your interest!")
+                    except Error as e:
+                        if "PRIMARY" in str(e):
+                            print("You've already participated in this request.")
+                        else:
+                            print(f"Error confirming participation: {e}")
+                            system.connection.rollback()
+
+    except Error as e:
+        print(f"\nError viewing requests: {e}")
+    finally:
+        cursor.close()
+
+
