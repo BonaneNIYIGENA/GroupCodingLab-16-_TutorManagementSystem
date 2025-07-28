@@ -358,5 +358,73 @@ def _create_new_request(system):
     finally:
         cursor.close()
 
+        
+"""Student schedule view"""        
+def student_view_scheduled(system):
+    """Student views their scheduled sessions with tutor email"""
+    try:
+        cursor = system.connection.cursor(dictionary=True)
+        cursor.execute('''
+            SELECT s.session_id, s.subject, s.topic, s.level, s.date, 
+                   s.start_time, s.end_time, s.duration, s.mode, s.details, 
+                   r.registration_date, t.name AS tutor_name, t.email AS tutor_email,
+                   NULL AS request_id, NULL AS request_date, r.registration_id,
+                   s.location, s.online_link
+            FROM registrations r
+            JOIN sessions s ON r.session_id = s.session_id
+            JOIN tutors t ON s.tutor_id = t.tutor_id
+            WHERE r.student_id = %s AND r.status = 'registered'
+            AND s.status = 'active' AND s.date >= CURDATE()
+
+            UNION
+
+            SELECT s.session_id, s.subject, s.topic, s.level, s.date, 
+                   s.start_time, s.end_time, s.duration, s.mode, s.details,
+                   NULL AS registration_date, t.name AS tutor_name, t.email AS tutor_email,
+                   sr.request_id, sr.request_date, NULL AS registration_id,
+                   s.location, s.online_link
+            FROM request_participations rp
+            JOIN session_requests sr ON rp.request_id = sr.request_id
+            JOIN sessions s ON sr.request_id = s.request_id
+            JOIN tutors t ON s.tutor_id = t.tutor_id
+            WHERE rp.student_id = %s AND sr.status = 'fulfilled'
+            AND s.status = 'active' AND s.date >= CURDATE()
+
+            ORDER BY date, start_time
+        ''', (system.current_user_id, system.current_user_id))
+
+        scheduled_sessions = cursor.fetchall()
+
+        if not scheduled_sessions:
+            print("\nYou have no scheduled sessions.")
+            return
+
+        print("\n Your Scheduled Sessions:")
+        for session in scheduled_sessions:
+            if session['request_id']:
+                print("\n Confirmed Request Session:")
+                print(f"Request ID: {session['request_id']}")
+            else:
+                print("\nRegistered Session:")
+                if session['registration_date']:
+                    print(f"Registration Date: {session['registration_date']}")
+
+            print(f"\nSubject: {session['subject']} - {session['topic']}")
+            print(f"Level: {session['level']}")
+            print(f"Date: {session['date']} | Time: {session['start_time']}-{session['end_time']}")
+            print(f"Duration: {session['duration']} minutes | Mode: {session['mode']}")
+            print(f"Tutor: {session['tutor_name']} ({session['tutor_email']})")
+
+            if session['mode'] == 'Online':
+                print(f"Online Link: {session['online_link']}")
+            else:
+                print(f"Location: {session['location']}")
+
+            print(f"Details: {session['details'] or 'No additional details'}")
+
+    except Error as e:
+        print(f"\nError viewing scheduled sessions: {e}")
+    finally:
+        cursor.close()
 
 
