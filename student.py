@@ -31,6 +31,7 @@ def student_flow(system):
         else:
             print("Invalid choice. Please enter a number between 1-4.")
 def register_for_session(system, session):
+    
     """Handles session registration process with time collision check"""
     try:
         cursor = system.connection.cursor(dictionary=True)
@@ -195,7 +196,7 @@ def student_requests_menu(system):
 
     """Menu for viewing and managing scheduled sessions"""
     while True:
-        print("\n📅 My Scheduled Sessions")
+        print("\n My Scheduled Sessions")
         print("1. View all scheduled sessions")
         print("2. Cancel one or more sessions")
         print("3. Back to Dashboard")
@@ -210,7 +211,6 @@ def student_requests_menu(system):
             break
         else:
             print("Invalid choice. Please enter 1-3.")
-
 
 """Confirm student request"""
 def student_view_and_confirm_requests(system):
