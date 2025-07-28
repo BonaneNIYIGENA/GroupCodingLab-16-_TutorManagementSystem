@@ -35,52 +35,51 @@ Tutoring Management System is Python-based, terminal-driven application to conne
 
 ---
 
-## 🏠 Project Structure
+##  Project Structure
 
-
+```
 GroupCodingLab-16-_TutorManagementSystem/
 ├── main.py           # Main application loop and shared utilities
 ├── student.py        # Student interface and logic
 ├── tutor.py          # Tutor interface and logic
 └── README.md         # Project documentation
-
+```
 
 ---
 
-## ⚙ Installation & Setup
+##  Installation & Setup
 
-### ✅ Requirements
+###  Requirements
 
 * Python
 * MySQL Server
-* mysql-connector-python as a package
+* `mysql-connector-python` as a package
 
-### �� Setup Instructions
+###  Setup Instructions
 
-1. *Clone the repository:*
+1. **Clone the repository:**
 
-   bash
+   ```bash
    git clone https://github.com/BonaneNIYIGENA/GroupCodingLab-16-_TutorManagementSystem.git
    cd GroupCodingLab-16-_TutorManagementSystem/
-   
+   ```
 
-2. *Install dependencies:*
+2. **Install dependencies:**
 
-   bash
+   ```bash
    pip install mysql-connector-python
-   
+   ```
 
-3. *Configure database credentials:*
+3. **Configure database credentials:**
 
-   * Open main.py
-   * Edit the get_db_config() function with your MySQL username, password, and database name.
+   * Open `main.py`
+   * Edit the `get_db_config()` function with your MySQL username, password, and database name.
 
-4. *Run the application:*
+4. **Run the application:**
 
-   bash
+   ```bash
    python main.py
    or
    python3 main.py
-   
+   ```
 
----
