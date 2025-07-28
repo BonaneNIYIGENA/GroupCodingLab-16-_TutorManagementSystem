@@ -1,4 +1,4 @@
-# 🎓 Tutoring Management System (TMS)
+# Tutoring Management System (TMS)
 
 ![Python](https://img.shields.io/badge/Python-blue)
 ![MySQL](https://img.shields.io/badge/MySQL-orange)
@@ -29,7 +29,7 @@ Tutoring Management System is Python-based, terminal-driven application to conne
 ### 🔐 System & Backend
 
 * Secure login via password hashing
-* MySQL-based persistent storage system
+* MySQL-based persistent storage system that os cloud based meaning also auto-syncing of data
 * Modular design for maintainability (Modules helping in maintaining the system)
 * Automatic database and tables creation (if not present)
 
@@ -53,7 +53,7 @@ GroupCodingLab-16-_TutorManagementSystem/
 
 * Python
 * MySQL Server
-* `mysql-connector-python` as a package
+* `mysql-connector-python` as a package required
 
 ###  Setup Instructions
 
@@ -68,14 +68,8 @@ GroupCodingLab-16-_TutorManagementSystem/
 
    ```bash
    pip install mysql-connector-python
-   ```
-
-3. **Configure database credentials:**
-
-   * Open `main.py`
-   * Edit the `get_db_config()` function with your MySQL username, password, and database name.
-
-4. **Run the application:**
+   ``` 
+3. **Run the application:**
 
    ```bash
    python main.py
@@ -83,6 +77,12 @@ GroupCodingLab-16-_TutorManagementSystem/
    python3 main.py
    ```
 
+4. Database creation and syncing
+    ```bash
+   Database called "tms" is created and connects
+   or
+   database exists it immediately connects
+   ```
 ##  Usage Guide
 
 ### Student Flow
@@ -103,14 +103,11 @@ GroupCodingLab-16-_TutorManagementSystem/
 
 ##  Key Components
 
-###  Classes & Functions
+###  Core system functions
 
 * `TutoringSystem` — Main orchestrator (in `main.py`)
 * `student_flow()` — Student menu logic
 * `tutor_flow()` — Tutor menu logic
-
-###  Core Functions
-
 * `register_user()` — Creates new student/tutor accounts
 * `login_user()` — Authenticates users
 * `register_for_session()` — Registers students into a session
@@ -119,11 +116,10 @@ GroupCodingLab-16-_TutorManagementSystem/
 
 ---
 
-## Authors and creatorss
+## Authors and creators (African Leadership University Year1 students)
 - Bonane NIYIGENA
 - Rhoda Nicole Umutesi
 - Fabrice Mbarushimana
 - Maxime Hirwa  Lilian
 - Muhammed Awwal Achuja
 - Nyiramanzi Igihozo
-
