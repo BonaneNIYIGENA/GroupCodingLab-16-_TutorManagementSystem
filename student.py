@@ -269,4 +269,94 @@ def student_view_and_confirm_requests(system):
     finally:
         cursor.close()
 
+"""User new request"""
+def _create_new_request(system):
+    """Helper method to create a new session request"""
+    print("\n📝 Request a New Session Topic")
+    request_data = {
+        "student_id": system.current_user_id,
+        "subject": system.get_valid_input("Subject: ", lambda x: len(x) > 0),
+        "topic": system.get_valid_input("Topic: ", lambda x: len(x) > 0),
+        "level": system.get_valid_input(
+            "Level (Beginner/Intermediate/Advanced): ",
+            lambda x: x.lower() in ['beginner', 'intermediate', 'advanced'],
+            "Please enter Beginner, Intermediate, or Advanced"
+        ).capitalize(),
+        "details": input("Additional details about what you want to learn: "),
+        "request_date": datetime.datetime.now().strftime("%Y-%m-%d"),
+        "status": "pending"
+    }
+
+    try:
+        cursor = system.connection.cursor(dictionary=True)
+
+        # Check for existing similar request
+        cursor.execute('''
+            SELECT sr.request_id
+            FROM session_requests sr
+            WHERE sr.subject = %s AND sr.topic = %s AND sr.level = %s 
+            AND sr.status = 'pending'
+            LIMIT 1
+        ''', (
+            request_data['subject'], request_data['topic'],
+            request_data['level']
+        ))
+
+        existing_request = cursor.fetchone()
+
+        if existing_request:
+            # Add participation to existing request
+            try:
+                cursor.execute('''
+                    INSERT INTO request_participations (request_id, student_id)
+                    VALUES (%s, %s)
+                ''', (existing_request['request_id'], system.current_user_id))
+
+                system.connection.commit()
+                print("\n✅ Similar request found! Added your interest to the existing request.")
+
+                # Get participant count
+                cursor.execute('''
+                    SELECT COUNT(*) AS count
+                    FROM request_participations
+                    WHERE request_id = %s
+                ''', (existing_request['request_id'],))
+                count = cursor.fetchone()['count']
+                print(f"Now {count} students are interested in this topic.")
+
+            except Error as e:
+                if "PRIMARY" in str(e):
+                    print("You've already participated in this request.")
+                else:
+                    raise
+        else:
+            # Create new request
+            request_id = system.generate_id('request')
+            cursor.execute('''
+                INSERT INTO session_requests (
+                    request_id, student_id, subject, topic, level, 
+                    details, request_date, status
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (
+                request_id, request_data['student_id'], request_data['subject'],
+                request_data['topic'], request_data['level'], request_data['details'],
+                request_data['request_date'], request_data['status']
+            ))
+
+            # Add participation
+            cursor.execute('''
+                INSERT INTO request_participations (request_id, student_id)
+                VALUES (%s, %s)
+            ''', (request_id, system.current_user_id))
+
+            system.connection.commit()
+            print("\n✅ Your session request has been submitted! Tutors will be notified.")
+
+    except Error as e:
+        print(f"\nError processing request: {e}")
+        system.connection.rollback()
+    finally:
+        cursor.close()
+
+
 
